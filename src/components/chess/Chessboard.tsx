@@ -99,103 +99,111 @@ export function Chessboard() {
   }, [squares]);
 
   return (
-    <div className="flex flex-col lg:flex-row gap-6 w-full max-w-7xl mx-auto p-4">
-      {/* Chessboard */}
-      <div className="flex-shrink-0">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-foreground">Interactive Chessboard</h2>
-          <button
-            onClick={handleReset}
-            className="text-xs bg-secondary text-secondary-foreground px-3 py-1.5 rounded hover:bg-secondary/80 transition-colors"
-          >
-            Reset Board
-          </button>
-        </div>
-        
-        {/* File labels (top) */}
-        <div className="flex ml-6 mb-1">
-          {['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'].map(file => (
-            <div key={file} className="w-12 md:w-14 lg:w-16 text-center text-xs text-muted-foreground font-mono">
-              {file}
-            </div>
-          ))}
-        </div>
-
-        <div className="flex">
-          {/* Rank labels (left) */}
-          <div className="flex flex-col justify-around pr-1">
-            {[8, 7, 6, 5, 4, 3, 2, 1].map(rank => (
-              <div key={rank} className="h-12 md:h-14 lg:h-16 flex items-center text-xs text-muted-foreground font-mono">
-                {rank}
+    <div className="w-full max-w-7xl mx-auto px-4 lg:px-6">
+      {/* Main Section: Board + Info Panels */}
+      <div className="flex flex-col xl:flex-row gap-8">
+        {/* Chessboard Section */}
+        <div className="flex-shrink-0">
+          <div className="flex items-center justify-between mb-5">
+            <h2 className="text-xl font-display font-semibold text-foreground">Interactive Board</h2>
+            <button
+              onClick={handleReset}
+              className="text-sm bg-secondary hover:bg-secondary/80 text-secondary-foreground px-4 py-2 rounded-lg transition-all duration-200 font-medium shadow-sm hover:shadow"
+            >
+              Reset Board
+            </button>
+          </div>
+          
+          {/* File labels (top) */}
+          <div className="flex ml-8 mb-2">
+            {['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'].map(file => (
+              <div key={file} className="w-12 sm:w-14 md:w-16 text-center text-xs text-muted-foreground font-mono font-medium">
+                {file}
               </div>
             ))}
           </div>
 
-          {/* Board */}
-          <div className="grid grid-cols-8 border-2 border-border rounded-lg overflow-hidden shadow-xl">
-            {displaySquares.map(square => (
-              <ChessSquare
-                key={square.index}
-                square={square}
-                piece={position.get(square.index)}
-                isSelected={selectedIndex === square.index}
-                isLegalMove={legalMoves.includes(square.index)}
-                isCapture={legalCaptures.includes(square.index)}
-                isLastMove={lastMove?.from === square.index || lastMove?.to === square.index}
-                onClick={() => handleSquareClick(square.index)}
-              />
-            ))}
+          <div className="flex">
+            {/* Rank labels (left) */}
+            <div className="flex flex-col justify-around pr-2">
+              {[8, 7, 6, 5, 4, 3, 2, 1].map(rank => (
+                <div key={rank} className="h-12 sm:h-14 md:h-16 flex items-center justify-center text-xs text-muted-foreground font-mono font-medium w-6">
+                  {rank}
+                </div>
+              ))}
+            </div>
+
+            {/* Board */}
+            <div className="grid grid-cols-8 border-4 border-border/80 rounded-xl overflow-hidden shadow-2xl">
+              {displaySquares.map(square => (
+                <ChessSquare
+                  key={square.index}
+                  square={square}
+                  piece={position.get(square.index)}
+                  isSelected={selectedIndex === square.index}
+                  isLegalMove={legalMoves.includes(square.index)}
+                  isCapture={legalCaptures.includes(square.index)}
+                  isLastMove={lastMove?.from === square.index || lastMove?.to === square.index}
+                  onClick={() => handleSquareClick(square.index)}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Legend */}
+          <div className="flex flex-wrap gap-5 mt-5 text-xs text-muted-foreground">
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 border-2 border-chess-selected rounded-sm shadow-sm" />
+              <span>Selected</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 bg-chess-legal/60 rounded-full shadow-sm" />
+              <span>Legal Move</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 border-2 border-chess-capture rounded-sm shadow-sm" />
+              <span>Capture</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 bg-chess-lastMove/50 rounded-sm shadow-sm" />
+              <span>Last Move</span>
+            </div>
           </div>
         </div>
 
-        {/* Legend */}
-        <div className="flex flex-wrap gap-4 mt-4 text-xs text-muted-foreground">
-          <div className="flex items-center gap-1.5">
-            <div className="w-3 h-3 border-2 border-chess-selected rounded" />
-            <span>Selected</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <div className="w-3 h-3 bg-chess-legal/50 rounded-full" />
-            <span>Legal Move</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <div className="w-3 h-3 border-2 border-chess-capture rounded" />
-            <span>Capture</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <div className="w-3 h-3 bg-chess-lastMove/40 rounded" />
-            <span>Last Move</span>
-          </div>
+        {/* Info Panels (Right Side) */}
+        <div className="flex-1 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-1 gap-5 xl:max-w-md">
+          {selectedSquare ? (
+            <SquareInfoPanel square={selectedSquare} piece={selectedPiece} />
+          ) : (
+            <div className="info-panel flex items-center justify-center text-muted-foreground text-sm py-8">
+              <div className="text-center">
+                <div className="text-3xl mb-2">♟</div>
+                <p>Click any square to see its information</p>
+              </div>
+            </div>
+          )}
+
+          <MovePanel
+            selectedSquare={selectedSquare}
+            selectedPiece={selectedPiece}
+            targetSquare={targetSquare}
+            isValidMove={isValidMove}
+            isCapture={isCapture}
+            onMakeMove={handleMakeMove}
+            onCancel={handleCancel}
+          />
+
+          <BitboardGrid 
+            legalSquares={legalSquares} 
+            selectedSquare={selectedIndex ?? undefined}
+          />
         </div>
       </div>
 
-      {/* Info Panels */}
-      <div className="flex-1 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-4 lg:max-w-sm">
-        {selectedSquare ? (
-          <SquareInfoPanel square={selectedSquare} piece={selectedPiece} />
-        ) : (
-          <div className="info-panel text-center text-muted-foreground text-sm py-6">
-            Click any square to see its information
-          </div>
-        )}
-
-        <MovePanel
-          selectedSquare={selectedSquare}
-          selectedPiece={selectedPiece}
-          targetSquare={targetSquare}
-          isValidMove={isValidMove}
-          isCapture={isCapture}
-          onMakeMove={handleMakeMove}
-          onCancel={handleCancel}
-        />
-
-        <BitboardGrid 
-          legalSquares={legalSquares} 
-          selectedSquare={selectedIndex ?? undefined}
-        />
-
+      {/* Bottom Section: Square Mapping & Movement Rules (Full Width) */}
+      <div className="mt-10 grid grid-cols-1 lg:grid-cols-2 gap-6">
         <SquareMappingTable />
-        
         <MovementRules />
       </div>
     </div>
