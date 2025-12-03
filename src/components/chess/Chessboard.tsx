@@ -5,6 +5,7 @@ import { BitboardGrid } from './BitboardGrid';
 import { MovePanel } from './MovePanel';
 import { SquareMappingTable } from './SquareMappingTable';
 import { MovementRules } from './MovementRules';
+import { MoveHistory, MoveRecord } from './MoveHistory';
 import { 
   getAllSquares, 
   getInitialPosition, 
@@ -20,6 +21,7 @@ export function Chessboard() {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [targetIndex, setTargetIndex] = useState<number | null>(null);
   const [lastMove, setLastMove] = useState<{ from: number; to: number } | null>(null);
+  const [moveHistory, setMoveHistory] = useState<MoveRecord[]>([]);
 
   const selectedSquare = selectedIndex !== null ? getSquareInfo(selectedIndex) : undefined;
   const selectedPiece = selectedIndex !== null ? position.get(selectedIndex) : undefined;
@@ -65,9 +67,23 @@ export function Chessboard() {
   const handleMakeMove = useCallback(() => {
     if (selectedIndex === null || targetIndex === null || !selectedPiece) return;
 
+    const fromSquare = getSquareInfo(selectedIndex);
+    const toSquare = getSquareInfo(targetIndex);
+    const capturedPiece = position.get(targetIndex);
+    const isCapture = capturedPiece !== undefined;
+
     const newPosition = new Map(position);
     newPosition.delete(selectedIndex);
     newPosition.set(targetIndex, selectedPiece);
+    
+    // Add to move history
+    setMoveHistory(prev => [...prev, {
+      from: fromSquare,
+      to: toSquare,
+      piece: selectedPiece,
+      isCapture,
+      capturedPiece
+    }]);
     
     setPosition(newPosition);
     setLastMove({ from: selectedIndex, to: targetIndex });
@@ -85,6 +101,7 @@ export function Chessboard() {
     setSelectedIndex(null);
     setTargetIndex(null);
     setLastMove(null);
+    setMoveHistory([]);
   }, []);
 
   // Display board from rank 8 to rank 1 (top to bottom)
@@ -198,13 +215,17 @@ export function Chessboard() {
             legalSquares={legalSquares} 
             selectedSquare={selectedIndex ?? undefined}
           />
+
+          <MoveHistory moves={moveHistory} />
         </div>
       </div>
 
       {/* Bottom Section: Square Mapping & Movement Rules (Full Width) */}
-      <div className="mt-10 grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <SquareMappingTable />
-        <MovementRules />
+      <div className="mt-10 pb-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <SquareMappingTable />
+          <MovementRules />
+        </div>
       </div>
     </div>
   );
