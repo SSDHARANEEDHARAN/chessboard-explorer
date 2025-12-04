@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { ChessSquare } from './ChessSquare';
 import { SquareInfoPanel } from './SquareInfoPanel';
 import { BitboardGrid } from './BitboardGrid';
@@ -7,6 +7,8 @@ import { SquareMappingTable } from './SquareMappingTable';
 import { MovementRules } from './MovementRules';
 import { MoveHistory, MoveRecord } from './MoveHistory';
 import { FenPanel } from './FenPanel';
+import { useStockfish, positionToFenWithTurn } from '@/hooks/useStockfish';
+import { Switch } from '@/components/ui/switch';
 import { 
   getAllSquares, 
   getInitialPosition, 
@@ -25,6 +27,10 @@ export function Chessboard() {
   const [targetIndex, setTargetIndex] = useState<number | null>(null);
   const [lastMove, setLastMove] = useState<{ from: number; to: number } | null>(null);
   const [moveHistory, setMoveHistory] = useState<MoveRecord[]>([]);
+  const [isWhiteTurn, setIsWhiteTurn] = useState(true);
+  const [stockfishEnabled, setStockfishEnabled] = useState(false);
+  
+  const { isThinking, isReady, getBestMove } = useStockfish(stockfishEnabled);
 
   const selectedSquare = selectedIndex !== null ? getSquareInfo(selectedIndex) : undefined;
   const selectedPiece = selectedIndex !== null ? position.get(selectedIndex) : undefined;
@@ -47,6 +53,9 @@ export function Chessboard() {
   const isCapture = targetIndex !== null && legalCaptures.includes(targetIndex);
 
   const handleSquareClick = useCallback((index: number) => {
+    // Don't allow moves when Stockfish is thinking or it's black's turn with Stockfish enabled
+    if (stockfishEnabled && (!isWhiteTurn || isThinking)) return;
+    
     const clickedPiece = position.get(index);
     
     // If we have a selected piece and clicked a legal square, set as target
@@ -55,8 +64,8 @@ export function Chessboard() {
       return;
     }
 
-    // If clicking own piece, select it
-    if (clickedPiece) {
+    // If clicking own piece (white only when Stockfish is enabled), select it
+    if (clickedPiece && (!stockfishEnabled || clickedPiece.color === 'white')) {
       setSelectedIndex(index);
       setTargetIndex(null);
       return;
@@ -65,34 +74,59 @@ export function Chessboard() {
     // If clicking empty non-legal square, show its info
     setSelectedIndex(index);
     setTargetIndex(null);
-  }, [selectedIndex, legalSquares, position]);
+  }, [selectedIndex, legalSquares, position, stockfishEnabled, isWhiteTurn, isThinking]);
 
-  const handleMakeMove = useCallback(() => {
-    if (selectedIndex === null || targetIndex === null || !selectedPiece) return;
+  const handleMakeMove = useCallback((fromIdx?: number, toIdx?: number, piece?: Piece) => {
+    const moveFrom = fromIdx ?? selectedIndex;
+    const moveTo = toIdx ?? targetIndex;
+    const movePiece = piece ?? selectedPiece;
+    
+    if (moveFrom === null || moveTo === null || !movePiece) return;
 
-    const fromSquare = getSquareInfo(selectedIndex);
-    const toSquare = getSquareInfo(targetIndex);
-    const capturedPiece = position.get(targetIndex);
-    const isCapture = capturedPiece !== undefined;
+    const fromSquare = getSquareInfo(moveFrom);
+    const toSquare = getSquareInfo(moveTo);
+    const capturedPiece = position.get(moveTo);
+    const isCaptureMove = capturedPiece !== undefined;
 
     const newPosition = new Map(position);
-    newPosition.delete(selectedIndex);
-    newPosition.set(targetIndex, selectedPiece);
+    newPosition.delete(moveFrom);
+    newPosition.set(moveTo, movePiece);
     
     // Add to move history
     setMoveHistory(prev => [...prev, {
       from: fromSquare,
       to: toSquare,
-      piece: selectedPiece,
-      isCapture,
+      piece: movePiece,
+      isCapture: isCaptureMove,
       capturedPiece
     }]);
     
     setPosition(newPosition);
-    setLastMove({ from: selectedIndex, to: targetIndex });
+    setLastMove({ from: moveFrom, to: moveTo });
     setSelectedIndex(null);
     setTargetIndex(null);
+    setIsWhiteTurn(prev => !prev);
   }, [selectedIndex, targetIndex, selectedPiece, position]);
+
+  // Stockfish makes a move when it's black's turn
+  useEffect(() => {
+    if (!stockfishEnabled || isWhiteTurn || isThinking || !isReady) return;
+    
+    const makeStockfishMove = async () => {
+      const fen = positionToFenWithTurn(position, false);
+      const move = await getBestMove(fen);
+      
+      if (move) {
+        const piece = position.get(move.from);
+        if (piece) {
+          handleMakeMove(move.from, move.to, piece);
+        }
+      }
+    };
+    
+    const timeout = setTimeout(makeStockfishMove, 500);
+    return () => clearTimeout(timeout);
+  }, [stockfishEnabled, isWhiteTurn, isThinking, isReady, position, getBestMove, handleMakeMove]);
 
   const handleCancel = useCallback(() => {
     setSelectedIndex(null);
@@ -105,6 +139,7 @@ export function Chessboard() {
     setTargetIndex(null);
     setLastMove(null);
     setMoveHistory([]);
+    setIsWhiteTurn(true);
   }, []);
 
   const currentFen = useMemo(() => positionToFen(position), [position]);
@@ -117,6 +152,9 @@ export function Chessboard() {
       setTargetIndex(null);
       setLastMove(null);
       setMoveHistory([]);
+      // Parse turn from FEN
+      const parts = fen.trim().split(' ');
+      setIsWhiteTurn(parts[1] !== 'b');
       return true;
     }
     return false;
@@ -139,15 +177,47 @@ export function Chessboard() {
       <div className="grid grid-cols-1 lg:grid-cols-[auto_1fr_1fr] gap-4 mb-8">
         {/* Left: Chessboard */}
         <div className="dashboard-card">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
             <h2 className="text-lg font-display font-semibold text-foreground">Interactive Board</h2>
-            <button
-              onClick={handleReset}
-              className="text-sm bg-destructive/10 hover:bg-destructive/20 text-destructive px-3 py-1.5 rounded-lg transition-colors duration-150 font-medium border border-destructive/20"
-            >
-              Reset
-            </button>
+            <div className="flex items-center gap-3">
+              {/* Stockfish Toggle */}
+              <div className="flex items-center gap-2">
+                <label htmlFor="stockfish-toggle" className="text-xs text-muted-foreground">
+                  vs Stockfish
+                </label>
+                <Switch
+                  id="stockfish-toggle"
+                  checked={stockfishEnabled}
+                  onCheckedChange={setStockfishEnabled}
+                />
+              </div>
+              <button
+                onClick={handleReset}
+                className="text-sm bg-destructive/10 hover:bg-destructive/20 text-destructive px-3 py-1.5 rounded-lg transition-colors duration-150 font-medium border border-destructive/20"
+              >
+                Reset
+              </button>
+            </div>
           </div>
+          
+          {/* Turn Indicator */}
+          {stockfishEnabled && (
+            <div className="mb-3 flex items-center gap-2 text-sm">
+              <div className={`w-3 h-3 rounded-full ${isWhiteTurn ? 'bg-white border border-border' : 'bg-foreground'}`} />
+              <span className="text-muted-foreground">
+                {isThinking ? (
+                  <span className="text-accent animate-pulse">Stockfish is thinking...</span>
+                ) : isWhiteTurn ? (
+                  'Your turn (White)'
+                ) : (
+                  "Stockfish's turn (Black)"
+                )}
+              </span>
+              {!isReady && stockfishEnabled && (
+                <span className="text-xs text-muted-foreground/60">(Loading engine...)</span>
+              )}
+            </div>
+          )}
           
           {/* File labels (top) */}
           <div className="flex ml-7 mb-1">
