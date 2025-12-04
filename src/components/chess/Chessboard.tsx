@@ -6,11 +6,14 @@ import { MovePanel } from './MovePanel';
 import { SquareMappingTable } from './SquareMappingTable';
 import { MovementRules } from './MovementRules';
 import { MoveHistory, MoveRecord } from './MoveHistory';
+import { FenPanel } from './FenPanel';
 import { 
   getAllSquares, 
   getInitialPosition, 
   getLegalMoves, 
   getSquareInfo,
+  positionToFen,
+  fenToPosition,
   Piece,
   Square
 } from '@/lib/chess';
@@ -104,6 +107,21 @@ export function Chessboard() {
     setMoveHistory([]);
   }, []);
 
+  const currentFen = useMemo(() => positionToFen(position), [position]);
+
+  const handleFenImport = useCallback((fen: string): boolean => {
+    const newPosition = fenToPosition(fen);
+    if (newPosition) {
+      setPosition(newPosition);
+      setSelectedIndex(null);
+      setTargetIndex(null);
+      setLastMove(null);
+      setMoveHistory([]);
+      return true;
+    }
+    return false;
+  }, []);
+
   // Display board from rank 8 to rank 1 (top to bottom)
   const displaySquares = useMemo(() => {
     const result: Square[] = [];
@@ -195,7 +213,7 @@ export function Chessboard() {
       </div>
 
       {/* Middle Section: Info Panels */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <div className="dashboard-card">
           {selectedSquare ? (
             <SquareInfoPanel square={selectedSquare} piece={selectedPiece} />
@@ -225,6 +243,14 @@ export function Chessboard() {
           <BitboardGrid 
             legalSquares={legalSquares} 
             selectedSquare={selectedIndex ?? undefined}
+          />
+        </div>
+
+        <div className="dashboard-card">
+          <FenPanel
+            currentFen={currentFen}
+            onImport={handleFenImport}
+            onReset={handleReset}
           />
         </div>
       </div>
