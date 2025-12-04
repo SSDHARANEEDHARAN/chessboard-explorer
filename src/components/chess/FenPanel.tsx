@@ -43,7 +43,7 @@ export function FenPanel({ currentFen, onImport, onReset }: FenPanelProps) {
     <div className="space-y-4">
       <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
         <span className="text-primary">♜</span>
-        FEN Notation
+        FEN vignesh
       </h3>
 
       {/* Current Position Export */}
