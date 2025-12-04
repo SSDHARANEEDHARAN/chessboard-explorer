@@ -220,3 +220,91 @@ export function getMoveNotation(from: Square, to: Square, piece: Piece, isCaptur
   const fromFile = piece.type === 'P' && isCapture ? from.file.toLowerCase() : '';
   return `${pieceNotation}${fromFile}${captureNotation}${to.algebraic.toLowerCase()}`;
 }
+
+// FEN notation utilities
+const FEN_PIECE_MAP: Record<string, { type: PieceType; color: PieceColor }> = {
+  'K': { type: 'K', color: 'white' },
+  'Q': { type: 'Q', color: 'white' },
+  'R': { type: 'R', color: 'white' },
+  'B': { type: 'B', color: 'white' },
+  'N': { type: 'N', color: 'white' },
+  'P': { type: 'P', color: 'white' },
+  'k': { type: 'K', color: 'black' },
+  'q': { type: 'Q', color: 'black' },
+  'r': { type: 'R', color: 'black' },
+  'b': { type: 'B', color: 'black' },
+  'n': { type: 'N', color: 'black' },
+  'p': { type: 'P', color: 'black' },
+};
+
+export function positionToFen(position: Map<number, Piece>): string {
+  const rows: string[] = [];
+  
+  for (let rank = 7; rank >= 0; rank--) {
+    let row = '';
+    let emptyCount = 0;
+    
+    for (let file = 0; file < 8; file++) {
+      const index = rank * 8 + file;
+      const piece = position.get(index);
+      
+      if (piece) {
+        if (emptyCount > 0) {
+          row += emptyCount;
+          emptyCount = 0;
+        }
+        const fenChar = piece.type;
+        row += piece.color === 'white' ? fenChar : fenChar.toLowerCase();
+      } else {
+        emptyCount++;
+      }
+    }
+    
+    if (emptyCount > 0) {
+      row += emptyCount;
+    }
+    rows.push(row);
+  }
+  
+  return rows.join('/') + ' w KQkq - 0 1';
+}
+
+export function fenToPosition(fen: string): Map<number, Piece> | null {
+  try {
+    const position = new Map<number, Piece>();
+    const parts = fen.trim().split(' ');
+    const boardPart = parts[0];
+    const rows = boardPart.split('/');
+    
+    if (rows.length !== 8) return null;
+    
+    for (let rankIndex = 0; rankIndex < 8; rankIndex++) {
+      const rank = 7 - rankIndex;
+      let file = 0;
+      
+      for (const char of rows[rankIndex]) {
+        if (file >= 8) return null;
+        
+        const digit = parseInt(char);
+        if (!isNaN(digit)) {
+          file += digit;
+        } else {
+          const pieceInfo = FEN_PIECE_MAP[char];
+          if (!pieceInfo) return null;
+          
+          const index = rank * 8 + file;
+          position.set(index, { type: pieceInfo.type, color: pieceInfo.color });
+          file++;
+        }
+      }
+      
+      if (file !== 8) return null;
+    }
+    
+    return position;
+  } catch {
+    return null;
+  }
+}
+
+export const STARTING_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
