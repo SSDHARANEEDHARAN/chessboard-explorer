@@ -45,7 +45,7 @@ export function MoveHistory({ moves }: MoveHistoryProps) {
       
       <div className="flex-1 overflow-y-auto space-y-2 pr-1 max-h-80">
         {moves.map((move, idx) => {
-          const pieceSymbol = PIECE_SYMBOLS[move.piece.type][move.piece.color];
+          const pieceSymbol = PIECE_SYMBOLS[move.piece.color][move.piece.type];
           const fromBitboard = BigInt(1) << BigInt(move.from.index);
           const toBitboard = BigInt(1) << BigInt(move.to.index);
           
@@ -88,7 +88,7 @@ export function MoveHistory({ moves }: MoveHistoryProps) {
               {move.isCapture && move.capturedPiece && (
                 <div className="mt-2 pt-2 border-t border-border/30 text-xs flex items-center gap-1">
                   <span className="text-destructive font-medium">Captured:</span>
-                  <span className="text-lg">{PIECE_SYMBOLS[move.capturedPiece.type][move.capturedPiece.color]}</span>
+                  <span className="text-lg">{PIECE_SYMBOLS[move.capturedPiece.color][move.capturedPiece.type]}</span>
                 </div>
               )}
             </div>
