@@ -43,7 +43,7 @@ export function FenPanel({ currentFen, onImport, onReset }: FenPanelProps) {
     <div className="space-y-4">
       <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
         <span className="text-primary">♜</span>
-        FEN vignesh
+        FEN Vignesh
       </h3>
 
       {/* Current Position Export */}
@@ -98,10 +98,22 @@ export function FenPanel({ currentFen, onImport, onReset }: FenPanelProps) {
         </div>
       </div>
 
-      {/* Quick Info */}
-      <div className="text-[10px] text-muted-foreground/70 leading-relaxed border-t border-border/50 pt-3">
-        <p><strong>FEN</strong> (Forsyth–Edwards Notation) describes a chess position.</p>
-        <p className="mt-1">Format: pieces/ranks active castling en-passant halfmove fullmove</p>
+      {/* FEN Explanation */}
+      <div className="text-[10px] text-muted-foreground/80 leading-relaxed border-t border-border/50 pt-3 space-y-2">
+        <p className="font-medium text-foreground/80">What is FEN?</p>
+        <p><strong>FEN</strong> (Forsyth–Edwards Notation) is a standard notation for describing a chess position in a single line of text.</p>
+        <div className="space-y-1 mt-2">
+          <p className="font-medium">Format breakdown:</p>
+          <ul className="list-disc list-inside space-y-0.5 pl-1">
+            <li><strong>Piece placement:</strong> 8 ranks separated by "/" (uppercase=White, lowercase=Black)</li>
+            <li><strong>Active color:</strong> "w" for White, "b" for Black</li>
+            <li><strong>Castling:</strong> KQkq (King/Queen side for each color)</li>
+            <li><strong>En passant:</strong> Target square or "-"</li>
+            <li><strong>Halfmove clock:</strong> Moves since last pawn/capture</li>
+            <li><strong>Fullmove number:</strong> Increments after Black moves</li>
+          </ul>
+        </div>
+        <p className="mt-2 text-muted-foreground/60">Example: rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1</p>
       </div>
     </div>
   );
