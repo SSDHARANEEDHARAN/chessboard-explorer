@@ -5,7 +5,7 @@ import { SquareMappingTable } from './SquareMappingTable';
 import { MovementRules } from './MovementRules';
 import { MoveHistory, MoveRecord } from './MoveHistory';
 import { FenPanel } from './FenPanel';
-import { useStockfish, positionToFenWithTurn } from '@/hooks/useStockfish';
+import { useChessAI } from '@/hooks/useChessAI';
 import { 
   getAllSquares, 
   getInitialPosition, 
@@ -25,8 +25,8 @@ export function Chessboard() {
   const [moveHistory, setMoveHistory] = useState<MoveRecord[]>([]);
   const [isWhiteTurn, setIsWhiteTurn] = useState(true);
   
-  // Stockfish always enabled - white is human, black is Stockfish
-  const { isThinking, isReady, getBestMove } = useStockfish(true);
+  // Chess AI for black pieces
+  const { isThinking, getBestMove } = useChessAI();
 
   const selectedSquare = selectedIndex !== null ? getSquareInfo(selectedIndex) : undefined;
   const selectedPiece = selectedIndex !== null ? position.get(selectedIndex) : undefined;
@@ -69,7 +69,7 @@ export function Chessboard() {
   }, [position]);
 
   const handleSquareClick = useCallback((index: number) => {
-    // Don't allow moves when Stockfish is thinking or it's black's turn
+    // Don't allow moves when AI is thinking or it's black's turn
     if (!isWhiteTurn || isThinking) return;
     
     const clickedPiece = position.get(index);
@@ -90,13 +90,12 @@ export function Chessboard() {
     setSelectedIndex(null);
   }, [selectedIndex, selectedPiece, legalSquares, position, isWhiteTurn, isThinking, makeMove]);
 
-  // Stockfish makes a move when it's black's turn
+  // AI makes a move when it's black's turn
   useEffect(() => {
-    if (isWhiteTurn || isThinking || !isReady) return;
+    if (isWhiteTurn || isThinking) return;
     
-    const makeStockfishMove = async () => {
-      const fen = positionToFenWithTurn(position, false);
-      const move = await getBestMove(fen);
+    const makeAIMove = async () => {
+      const move = await getBestMove(position);
       
       if (move) {
         const piece = position.get(move.from);
@@ -106,9 +105,9 @@ export function Chessboard() {
       }
     };
     
-    const timeout = setTimeout(makeStockfishMove, 500);
+    const timeout = setTimeout(makeAIMove, 300);
     return () => clearTimeout(timeout);
-  }, [isWhiteTurn, isThinking, isReady, position, getBestMove, makeMove]);
+  }, [isWhiteTurn, isThinking, position, getBestMove, makeMove]);
 
   const handleReset = useCallback(() => {
     setPosition(getInitialPosition());
@@ -146,41 +145,58 @@ export function Chessboard() {
   }, [squares]);
 
   return (
-    <div className="w-full max-w-[1600px] mx-auto px-4 lg:px-6">
-      {/* Main Section: Board + Move History + Info */}
-      <div className="grid grid-cols-1 lg:grid-cols-[auto_1fr_1fr] gap-4 mb-8">
-        {/* Left: Chessboard */}
-        <div className="dashboard-card">
+    <div className="w-full max-w-[1400px] mx-auto px-4 lg:px-6">
+      {/* Top Section: Square Info (Left) + Chess Board (Right) */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-6 mb-6">
+        {/* Left: Square Info Panel */}
+        <div className="dashboard-card order-2 lg:order-1">
+          <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+            <span className="text-primary">♟</span>
+            Square Information
+          </h3>
+          {selectedSquare ? (
+            <SquareInfoPanel square={selectedSquare} piece={selectedPiece} />
+          ) : (
+            <div className="flex items-center justify-center text-muted-foreground text-sm py-12">
+              <div className="text-center">
+                <div className="text-4xl mb-3">♟</div>
+                <p className="text-sm">Click any square to see its details</p>
+                <p className="text-xs text-muted-foreground/60 mt-1">Index, Bitboard value, Piece info</p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Right: Chessboard */}
+        <div className="dashboard-card order-1 lg:order-2">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-display font-semibold text-foreground">Chess Board</h2>
             <button
               onClick={handleReset}
-              className="text-sm bg-destructive/10 hover:bg-destructive/20 text-destructive px-3 py-1.5 rounded-lg transition-colors duration-150 font-medium border border-destructive/20"
+              className="text-sm bg-destructive/10 hover:bg-destructive/20 text-destructive px-4 py-2 rounded-lg transition-colors duration-150 font-medium border border-destructive/20"
             >
               New Game
             </button>
           </div>
           
           {/* Turn Indicator */}
-          <div className="mb-3 flex items-center gap-2 text-sm">
-            <div className={`w-3 h-3 rounded-full ${isWhiteTurn ? 'bg-white border border-border' : 'bg-foreground'}`} />
-            <span className="text-muted-foreground">
+          <div className="mb-4 flex items-center gap-3 text-sm p-3 bg-muted/30 rounded-lg">
+            <div className={`w-4 h-4 rounded-full ${isWhiteTurn ? 'bg-white border-2 border-border' : 'bg-foreground'}`} />
+            <span className="text-foreground font-medium">
               {isThinking ? (
-                <span className="text-accent animate-pulse">Stockfish thinking...</span>
-              ) : !isReady ? (
-                <span className="text-muted-foreground/60">Loading engine...</span>
+                <span className="text-accent animate-pulse">⏳ Computer is thinking...</span>
               ) : isWhiteTurn ? (
-                'Your turn (White)'
+                '👤 Your turn (White) - Click a piece to move'
               ) : (
-                "Stockfish's turn (Black)"
+                '🤖 Computer turn (Black)'
               )}
             </span>
           </div>
           
           {/* File labels (top) */}
-          <div className="flex ml-7 mb-1">
+          <div className="flex ml-8 mb-1">
             {['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'].map(file => (
-              <div key={file} className="w-10 sm:w-11 text-center text-xs text-muted-foreground font-mono">
+              <div key={file} className="w-12 sm:w-14 text-center text-sm text-muted-foreground font-mono font-medium">
                 {file}
               </div>
             ))}
@@ -188,16 +204,16 @@ export function Chessboard() {
 
           <div className="flex">
             {/* Rank labels (left) */}
-            <div className="flex flex-col justify-around pr-1">
+            <div className="flex flex-col justify-around pr-2">
               {[8, 7, 6, 5, 4, 3, 2, 1].map(rank => (
-                <div key={rank} className="h-10 sm:h-11 flex items-center justify-center text-xs text-muted-foreground font-mono w-6">
+                <div key={rank} className="h-12 sm:h-14 flex items-center justify-center text-sm text-muted-foreground font-mono font-medium w-6">
                   {rank}
                 </div>
               ))}
             </div>
 
             {/* Board */}
-            <div className="grid grid-cols-8 border-2 border-border rounded-lg overflow-hidden shadow-lg">
+            <div className="grid grid-cols-8 border-2 border-border rounded-lg overflow-hidden shadow-xl">
               {displaySquares.map(square => (
                 <ChessSquare
                   key={square.index}
@@ -214,59 +230,49 @@ export function Chessboard() {
           </div>
 
           {/* Legend */}
-          <div className="flex flex-wrap gap-3 mt-3 text-xs text-muted-foreground">
-            <div className="flex items-center gap-1.5">
-              <div className="w-2.5 h-2.5 border-2 border-primary rounded-sm" />
+          <div className="flex flex-wrap gap-4 mt-4 text-sm text-muted-foreground">
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 border-2 border-primary rounded-sm" />
               <span>Selected</span>
             </div>
-            <div className="flex items-center gap-1.5">
-              <div className="w-2.5 h-2.5 bg-accent/60 rounded-full" />
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 bg-accent/60 rounded-full" />
               <span>Legal Move</span>
             </div>
-            <div className="flex items-center gap-1.5">
-              <div className="w-2.5 h-2.5 border-2 border-destructive rounded-sm" />
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 border-2 border-destructive rounded-sm" />
               <span>Capture</span>
             </div>
-          </div>
-        </div>
-
-        {/* Middle: Move History */}
-        <div className="dashboard-card">
-          <MoveHistory moves={moveHistory} />
-        </div>
-
-        {/* Right: Square Info + FEN */}
-        <div className="flex flex-col gap-4">
-          <div className="dashboard-card flex-1">
-            {selectedSquare ? (
-              <SquareInfoPanel square={selectedSquare} piece={selectedPiece} />
-            ) : (
-              <div className="flex items-center justify-center text-muted-foreground text-sm py-8">
-                <div className="text-center">
-                  <div className="text-2xl mb-2">♟</div>
-                  <p className="text-xs">Click a white piece to move</p>
-                </div>
-              </div>
-            )}
-          </div>
-          <div className="dashboard-card flex-1">
-            <FenPanel
-              currentFen={currentFen}
-              onImport={handleFenImport}
-              onReset={handleReset}
-            />
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 bg-yellow-500/40 rounded-sm" />
+              <span>Last Move</span>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Bottom Section: Reference Tables */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pb-6">
-        <div className="dashboard-card">
-          <SquareMappingTable />
-        </div>
-        <div className="dashboard-card">
-          <MovementRules />
-        </div>
+      {/* Move History - Full Width */}
+      <div className="dashboard-card mb-6">
+        <MoveHistory moves={moveHistory} />
+      </div>
+
+      {/* FEN Panel - Full Width */}
+      <div className="dashboard-card mb-6">
+        <FenPanel
+          currentFen={currentFen}
+          onImport={handleFenImport}
+          onReset={handleReset}
+        />
+      </div>
+
+      {/* Square Mapping - Full Width */}
+      <div className="dashboard-card mb-6">
+        <SquareMappingTable />
+      </div>
+
+      {/* Movement Rules - Full Width */}
+      <div className="dashboard-card mb-6">
+        <MovementRules />
       </div>
     </div>
   );
